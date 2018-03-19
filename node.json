@@ -1,0 +1,12 @@
+{
+   Kind: node
+   apiVersion: v1
+   "metadata": 
+   {
+      "name": "10.01.1.10",
+      "labels"
+      {
+         "name": "cluster 1 node"
+      }
+   }
+}
