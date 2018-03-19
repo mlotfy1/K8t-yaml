@@ -1,0 +1,128 @@
+##################################################
+####Perform the following steps on Master Node####
+##################################################
+
+#### Step 1: Disable SELinux & setup firewall rules
+
+hostnamectl set-hostname 'k8s-master'
+exec bash
+setenforce 0
+sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+firewall-cmd --permanent --add-port=6443/tcp
+firewall-cmd --permanent --add-port=2379-2380/tcp
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10251/tcp
+firewall-cmd --permanent --add-port=10252/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --reload
+modprobe br_netfilter
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+######DNS Config#########
+/etc/hosts
+10.0.0.50 k8s-master
+10.0.0.51 worker-node1
+10.0.0.52 worker-node2
+#########################
+
+### Step 2: Configure Kubernetes Repository
+#########################################################################
+/etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+#########################################################################
+
+### Step 3: Install Docker
+yum install docker
+systemctl restart docker && systemctl enable docker
+
+### Step 4: Install Kubernetes
+#yum install etcd flannel	
+
+
+yum --showduplicates list kubeadm
+yum --showduplicates list kubectl
+yum --showduplicates list kubelet
+
+yum install kubeadm-1.8.0-0 kubectl-1.8.0-0 kubelet-1.8.0-0 kubernetes-cni
+kubeadm reset
+add "Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"" to /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+systemctl daemon-reload
+systemctl restart kubelet && systemctl enable kubelet
+kubeadm init --pod-network-cidr=10.244.0.0/16
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl get nodes
+kubectl get pods --all-namespaces
+kubectl apply -f  https://raw.githubusercontent.com/coreos/flannel/master/Documentation/k8s-manifests/kube-flannel-rbac.yml
+kubectl apply -f  https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+	or	kubectl apply --filename https://git.io/weave-kube
+kubectl get pods --all-namespaces -o wide
+kubectl get nodes
+
+##################################################
+#####Perform the following steps on all Nodes#####
+##################################################
+
+#### Step 1: Disable SELinux & setup firewall rules
+
+hostnamectl set-hostname 'worker-node1'
+exec bash
+setenforce 0
+sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+firewall-cmd --permanent --add-port=10250/tcp
+firewall-cmd --permanent --add-port=10255/tcp
+firewall-cmd --permanent --add-port=30000-32767/tcp
+firewall-cmd --permanent --add-port=6783/tcp
+firewall-cmd  --reload
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+######DNS Config#########
+/etc/hosts
+10.0.0.50 k8s-master
+10.0.0.51 worker-node1
+10.0.0.52 worker-node2
+#########################
+
+### Step 2: Configure Kubernetes Repository
+#########################################################################
+/etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+#########################################################################
+yum repolist
+
+### Step 3: Install Docker
+yum install docker
+systemctl restart docker && systemctl enable docker
+
+### Step 4: Install Kubernetes
+#yum install etcd flannel
+
+yum --showduplicates list kubeadm
+yum --showduplicates list kubectl
+yum --showduplicates list kubelet
+
+yum install kubeadm-1.8.0-0 kubectl-1.8.0-0 kubelet-1.8.0-0 kubernetes-cni
+#add "Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"" to /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+systemctl daemon-reload
+systemctl restart kubelet && systemctl enable kubelet
+kubeadm join --token 58dc65.d0dfd273d96ce567 10.0.0.50:6443 --discovery-token-ca-cert-hash sha256:70b3dbef4159b1041609625ce22f2b073cc9f6756089975fa950d7f11cef69b3
+
+kubectl get nodes
