@@ -56,6 +56,7 @@ kubeadm reset
 add "Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"" to /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 systemctl daemon-reload
 systemctl restart kubelet && systemctl enable kubelet
+swapoff -a
 kubeadm init --pod-network-cidr=10.244.0.0/16
 
 mkdir -p $HOME/.kube
@@ -129,6 +130,7 @@ yum install kubeadm-1.8.0-0 kubectl-1.8.0-0 kubelet-1.8.0-0 kubernetes-cni
 #add "Environment="KUBELET_EXTRA_ARGS=--fail-swap-on=false"" to /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 systemctl daemon-reload
 systemctl restart kubelet && systemctl enable kubelet
+swapoff -a
 kubeadm join --token 58dc65.d0dfd273d96ce567 10.0.0.50:6443 --discovery-token-ca-cert-hash sha256:70b3dbef4159b1041609625ce22f2b073cc9f6756089975fa950d7f11cef69b3
 
 kubectl get nodes
